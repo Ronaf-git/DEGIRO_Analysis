@@ -33,6 +33,8 @@ import sys
 import platform
 import numpy as np
 from datetime import timedelta
+import textwrap
+
 
 # ==============================================================================================================================
 # Variables
@@ -44,13 +46,87 @@ current_date = datetime.now().strftime('%Y-%m-%d')
 
 # Dictionary to map exchanges to Yahoo Finance suffix
 exchange_suffixes = {
-    "EAM": ".L",  # Example: London Stock Exchange (use appropriate suffix)
-    "XETR": ".DE",  # Example: Frankfurt Stock Exchange
-    "NYS": ".N",  # New York Stock Exchange
-    "TSE": ".T",  # Tokyo Stock Exchange
-    "TDG": ".L",  # Adding TDG: Assuming it's NYSE, so using ".N" as a placeholder
-    # Add more exchanges and their corresponding suffixes here as needed
+    "EAM": ".AS",      # Euronext Amsterdam (Netherlands)
+    "XETR": ".DE",    # Frankfurt Stock Exchange (Germany)
+    "NYS": ".N",      # New York Stock Exchange (NYSE)
+    "TSE": ".T",      # Tokyo Stock Exchange (Japan)
+    "TDG": ".DE",      
+    "EPA": ".PA",     # Euronext Paris (France)
+    "BVMF": ".SA",    # B3 - São Paulo Stock Exchange (Brazil)
+    "SSE": ".SS",     # Shanghai Stock Exchange (China)
+    "SZSE": ".SZ",    # Shenzhen Stock Exchange (China)
+    "HKEX": ".HK",    # Hong Kong Stock Exchange (Hong Kong)
+    "LSE": ".L",      # London Stock Exchange (UK)
+    "ASX": ".AX",     # Australian Securities Exchange (Australia)
+    "TSX": ".TO",     # Toronto Stock Exchange (Canada)
+    "MEXBOL": ".MX",  # Bolsa Mexicana de Valores (Mexico)
+    "BME": ".MC",     # Bolsas y Mercados Españoles (Spain)
+    "JSE": ".J",      # Johannesburg Stock Exchange (South Africa)
+    "NSE": ".NS",     # National Stock Exchange of India (NSE)
+    "BSE": ".BO",     # Bombay Stock Exchange (India)
+    "SGX": ".SI",     # Singapore Exchange (Singapore)
+    "ISE": ".IE",     # Irish Stock Exchange (Ireland)
+    "WSE": ".WA",     # Warsaw Stock Exchange (Poland)
+    "SWX": ".SW",     # Swiss Exchange (Switzerland)
+    "KOSDAQ": ".KQ",  # KOSDAQ (South Korea)
+    "KSE": ".KS",     # Korea Stock Exchange (South Korea)
+    "CSE": ".CN",     # Colombo Stock Exchange (Sri Lanka)
+    "TASE": ".TA",    # Tel Aviv Stock Exchange (Israel)
+    "BSE": ".BR",     # Bahrain Stock Exchange (Bahrain)
+    "ASE": ".AT",     # Athens Stock Exchange (Greece)
+    "NZX": ".NZ",     # New Zealand Stock Exchange (New Zealand)
+    "VSE": ".VN",     # Vietnam Stock Exchange (Vietnam)
+    "PSE": ".PH",     # Philippine Stock Exchange (Philippines)
+    "EGX": ".CA",     # Egyptian Stock Exchange (Egypt)
+    "BVB": ".RO",     # Bucharest Stock Exchange (Romania)
+    "IDX": ".JK",     # Indonesia Stock Exchange (Indonesia)
+    "MSE": ".MN",     # Mongolian Stock Exchange (Mongolia)
+    "QSE": ".QA",     # Qatar Stock Exchange (Qatar)
+    "DSE": ".BD",     # Dhaka Stock Exchange (Bangladesh)
+    "MOEX": ".ME",    # Moscow Exchange (Russia)
+    "TASE": ".TL",    # Turkish Stock Exchange (Turkey)
+    "LSE": ".L",      # London Stock Exchange (UK)
+    "AMEX": ".A",     # American Stock Exchange (formerly, now merged with NYSE)
+    "BATS": ".B",     # BATS Global Markets (U.S. exchange)
+    "CBOE": ".C",     # Chicago Board Options Exchange (CBOE)
+    "OTC": ".OTC",    # Over-the-counter market (generic)
+    "FRA": ".F",      # Frankfurt Stock Exchange (Germany)
+    "MEX": ".MX",     # Mexican Stock Exchange
+    "TA": ".T",       # Tel Aviv Stock Exchange
+    "NZX": ".NZ",     # New Zealand Stock Exchange
+    "BMO": ".BR",     # Brazilian Stock Market
+    "SO": ".SO",      # Santiago Stock Exchange (Chile)
+    "MCX": ".MC",     # Mumbai Stock Exchange (India)
+    "BME": ".MC",     # Spanish Stock Exchange (BME)
+    "LSE": ".L",      # London Stock Exchange (UK)
+    "SSE": ".SS",     # Shanghai Stock Exchange (China)
+    "XETRA": ".DE",   # Xetra Frankfurt (Germany)
+    "TSE": ".T",      # Tokyo Stock Exchange (Japan)
+    "SINGEX": ".SG",  # Singapore Exchange (Singapore)
+    "NSE": ".NS",     # National Stock Exchange of India (NSE)
+    "BSE": ".BO",     # Bombay Stock Exchange (India)
+    "VSE": ".VN",     # Vietnam Stock Exchange (Vietnam)
+    "MOEX": ".RU",    # Moscow Exchange (Russia)
+    "CSE": ".CN",     # Colombo Stock Exchange (Sri Lanka)
+    "BME": ".MC",     # Bolsa de Madrid (Spain)
+    "QSE": ".QA",     # Qatar Stock Exchange (Qatar)
+    "ASE": ".AT",     # Athens Stock Exchange (Greece)
+    "EGX": ".EG",     # Egyptian Stock Exchange (Egypt)
+    "TASE": ".TA",    # Tel Aviv Stock Exchange (Israel)
+    "DSE": ".BD",     # Dhaka Stock Exchange (Bangladesh)
+    "PSE": ".PH",     # Philippine Stock Exchange (Philippines)
+    "JSE": ".J",      # Johannesburg Stock Exchange (South Africa)
+    "PSE": ".PH",     # Philippine Stock Exchange
+    "SHSE": ".SS",    # Shanghai Stock Exchange (China)
+    "SZSE": ".SZ",    # Shenzhen Stock Exchange (China)
+    "BSE": ".IN",     # Bombay Stock Exchange (India)
+    "DAX": ".DE",     # Frankfurt (Germany)
+    "EGX": ".EG",     # Egyptian Stock Exchange (Egypt)
+    "MEX": ".MX",     # Mexican Stock Exchange (Mexico)
+    "IDEX": ".ID",    # Indonesia Stock Exchange (Indonesia)
+    "FTSE": ".FT",    # FTSE 100 Index (UK)
 }
+
 
 
 # ==============================================================================================================================
@@ -59,7 +135,7 @@ exchange_suffixes = {
 
 
 # Function to dynamically create Yahoo Finance tickers based on ISIN and exchange
-def get_yahoo_ticker(ticker, exchange):
+def get_yahoo_ticker(ticker, exchange) -> None:
     # Ensure exchange is a string before applying .upper()
     if isinstance(exchange, str):
         exchange = exchange.upper()
@@ -290,8 +366,16 @@ for ISIN in df.iloc[:, 3].unique():
         else:
         # If the date is missing, use the closest available date (previous day)
             # Find the closest date less than or equal to the single_date
-            closest_date = max(date for date in tickers_data_dict if date <= single_date)
-            daily_value = tickers_data_dict[closest_date]
+            # Check if the iterable is not empty before calling max()
+            filtered_dates = [date for date in tickers_data_dict if date <= single_date]
+            if filtered_dates:
+                closest_date = max(filtered_dates)
+                daily_value = tickers_data_dict[closest_date]
+            else:
+                # Handle the case where no valid dates are found
+                closest_date = None  # or any other default value you prefer
+                daily_value = 0
+            
 
         # Update running totals
         running_quantity += daily_quantity
@@ -334,8 +418,11 @@ today = cumulative_df['Date'].max()
 
 # Filter for the latest data
 today_data = cumulative_df[cumulative_df['Date'] == today].copy()
+print(today_data)
+
 
 # Calculate the percentage difference for Actual_value vs Buying_value using .loc to avoid SettingWithCopyWarning
+today_data.loc[:, 'Value_diff'] = (today_data['Actual_value'] - today_data['Buying_value'])
 today_data.loc[:, 'Percentage_diff'] = ((today_data['Actual_value'] - today_data['Buying_value']) / today_data['Buying_value']) * 100
 
 # 1. KPI: Actual_value vs Buying_value (today), in percentage
@@ -403,6 +490,57 @@ plots.append(fig0)
 
 
 
+
+# Plot 
+
+# Assuming today_data is already defined and includes the 'Date' column
+df_today_data = today_data.copy()
+
+df = today_data.copy()
+
+# Format the values for table display
+df['Buying_value'] = df['Buying_value'].apply(lambda x: f"€ {x:,.2f}")
+df['Actual_value'] = df['Actual_value'].apply(lambda x: f"€ {x:,.2f}")
+df['Value_diff'] = df['Value_diff'].apply(lambda x: f"€ {x:,.2f}")
+df['Percentage_diff'] = df['Percentage_diff'].apply(lambda x: f"{x:,.2f}%")
+
+'''
+# Function to wrap text in cells
+def wrap_text(text, width=10):
+    return "\n".join(textwrap.wrap(text, width=width))
+
+# Apply wrapping to the DataFrame content
+df = df.applymap(lambda x: wrap_text(x) if isinstance(x, str) else x)
+'''
+# Prepare the table
+fig_Table, ax = plt.subplots(figsize=(11.69, 8.27))  # A4 landscape size (in inches)
+# Hide axes
+ax.axis('off')
+# Create the table using the DataFrame
+table = ax.table(cellText=df.values, colLabels=df.columns, loc='center', cellLoc='center')
+# Adjust table aesthetics
+table.auto_set_font_size(False)
+table.set_fontsize(8)
+table.auto_set_column_width(col=list(range(len(df.columns))))
+
+
+
+# Show the plot
+plt.title('Product Comparison with Values and Deltas', fontsize=16)
+plt.tight_layout()
+
+
+# Store the plot in the array
+plots.append(fig_Table)
+
+
+
+
+
+
+
+
+
 # 1. Create and store the plot for the total Montant du portefeuille by date
 plt1 = plt.figure(figsize=(12, 6))
 # Group the data by 'Date' and sum the 'Montant du portefeuille' for each date
@@ -441,6 +579,8 @@ for isin in isin_list:
     plt_isin = plt.figure(figsize=(12, 6))
     # Filter data for the current ISIN
     isin_data = cumulative_df[cumulative_df['ISIN'] == isin]
+    # Filter the rows where 'Actual_value' is 0 and drop the 'Date' column
+    isin_data.loc[isin_data['Actual_value'] == 0, 'Date'] = None
     product_name = cumulative_df[cumulative_df['ISIN'] == isin]['Products'].unique()[0]
     
     # Loop through the data for the current ISIN and plot segments with different colors
@@ -533,5 +673,8 @@ with PdfPages(pdf_filepath) as pdf:
         pdf.savefig(plot)  # Save the current plot to the PDF
         plt.close(plot)    # Close the plot after saving
 
-#show_popup("Analyse done",f"All graphs (separate and merged in PDF) have been saved to the output folder ({date_folder}). The dataset is also available. The pdf will open.")
-open_system(pdf_filepath)
+try : 
+   # show_popup("Analyse done",f"All graphs (separate and merged in PDF) have been saved to the output folder ({date_folder}). The dataset is also available. The pdf will open.")
+    open_system(pdf_filepath)
+except:
+    print("An exception occurred")
