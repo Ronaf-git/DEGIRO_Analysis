@@ -8,14 +8,13 @@
 # ----------------------------------------------------
 
 
-# --- Install/Create Exe
-#pip install yfinance
-#pip install pandas
+# --- If running from python : install requirements (packages)
+# from Config.requirements import *
 
 # ==============================================================================================================================
 # Imports
 # ==============================================================================================================================
-
+from matplotlib.ticker import PercentFormatter
 import yfinance as yf #https://github.com/ranaroussi/yfinance
 import pandas as pd
 import requests
@@ -34,98 +33,18 @@ import platform
 import numpy as np
 from datetime import timedelta
 import textwrap
-
+import sqlite3  # Use SQLite or replace with SQLAlchemy for other databases
 
 # ==============================================================================================================================
 # Variables
 # ==============================================================================================================================
+# ----- Custom Files
+# Const
+from Config.config import *
 
 
 # Get current date as a string in the format YYYY-MM-DD
 current_date = datetime.now().strftime('%Y-%m-%d')
-
-# Dictionary to map exchanges to Yahoo Finance suffix
-exchange_suffixes = {
-    "EAM": ".AS",      # Euronext Amsterdam (Netherlands)
-    "XETR": ".DE",    # Frankfurt Stock Exchange (Germany)
-    "NYS": ".N",      # New York Stock Exchange (NYSE)
-    "TSE": ".T",      # Tokyo Stock Exchange (Japan)
-    "TDG": ".DE",      
-    "EPA": ".PA",     # Euronext Paris (France)
-    "BVMF": ".SA",    # B3 - São Paulo Stock Exchange (Brazil)
-    "SSE": ".SS",     # Shanghai Stock Exchange (China)
-    "SZSE": ".SZ",    # Shenzhen Stock Exchange (China)
-    "HKEX": ".HK",    # Hong Kong Stock Exchange (Hong Kong)
-    "LSE": ".L",      # London Stock Exchange (UK)
-    "ASX": ".AX",     # Australian Securities Exchange (Australia)
-    "TSX": ".TO",     # Toronto Stock Exchange (Canada)
-    "MEXBOL": ".MX",  # Bolsa Mexicana de Valores (Mexico)
-    "BME": ".MC",     # Bolsas y Mercados Españoles (Spain)
-    "JSE": ".J",      # Johannesburg Stock Exchange (South Africa)
-    "NSE": ".NS",     # National Stock Exchange of India (NSE)
-    "BSE": ".BO",     # Bombay Stock Exchange (India)
-    "SGX": ".SI",     # Singapore Exchange (Singapore)
-    "ISE": ".IE",     # Irish Stock Exchange (Ireland)
-    "WSE": ".WA",     # Warsaw Stock Exchange (Poland)
-    "SWX": ".SW",     # Swiss Exchange (Switzerland)
-    "KOSDAQ": ".KQ",  # KOSDAQ (South Korea)
-    "KSE": ".KS",     # Korea Stock Exchange (South Korea)
-    "CSE": ".CN",     # Colombo Stock Exchange (Sri Lanka)
-    "TASE": ".TA",    # Tel Aviv Stock Exchange (Israel)
-    "BSE": ".BR",     # Bahrain Stock Exchange (Bahrain)
-    "ASE": ".AT",     # Athens Stock Exchange (Greece)
-    "NZX": ".NZ",     # New Zealand Stock Exchange (New Zealand)
-    "VSE": ".VN",     # Vietnam Stock Exchange (Vietnam)
-    "PSE": ".PH",     # Philippine Stock Exchange (Philippines)
-    "EGX": ".CA",     # Egyptian Stock Exchange (Egypt)
-    "BVB": ".RO",     # Bucharest Stock Exchange (Romania)
-    "IDX": ".JK",     # Indonesia Stock Exchange (Indonesia)
-    "MSE": ".MN",     # Mongolian Stock Exchange (Mongolia)
-    "QSE": ".QA",     # Qatar Stock Exchange (Qatar)
-    "DSE": ".BD",     # Dhaka Stock Exchange (Bangladesh)
-    "MOEX": ".ME",    # Moscow Exchange (Russia)
-    "TASE": ".TL",    # Turkish Stock Exchange (Turkey)
-    "LSE": ".L",      # London Stock Exchange (UK)
-    "AMEX": ".A",     # American Stock Exchange (formerly, now merged with NYSE)
-    "BATS": ".B",     # BATS Global Markets (U.S. exchange)
-    "CBOE": ".C",     # Chicago Board Options Exchange (CBOE)
-    "OTC": ".OTC",    # Over-the-counter market (generic)
-    "FRA": ".F",      # Frankfurt Stock Exchange (Germany)
-    "MEX": ".MX",     # Mexican Stock Exchange
-    "TA": ".T",       # Tel Aviv Stock Exchange
-    "NZX": ".NZ",     # New Zealand Stock Exchange
-    "BMO": ".BR",     # Brazilian Stock Market
-    "SO": ".SO",      # Santiago Stock Exchange (Chile)
-    "MCX": ".MC",     # Mumbai Stock Exchange (India)
-    "BME": ".MC",     # Spanish Stock Exchange (BME)
-    "LSE": ".L",      # London Stock Exchange (UK)
-    "SSE": ".SS",     # Shanghai Stock Exchange (China)
-    "XETRA": ".DE",   # Xetra Frankfurt (Germany)
-    "TSE": ".T",      # Tokyo Stock Exchange (Japan)
-    "SINGEX": ".SG",  # Singapore Exchange (Singapore)
-    "NSE": ".NS",     # National Stock Exchange of India (NSE)
-    "BSE": ".BO",     # Bombay Stock Exchange (India)
-    "VSE": ".VN",     # Vietnam Stock Exchange (Vietnam)
-    "MOEX": ".RU",    # Moscow Exchange (Russia)
-    "CSE": ".CN",     # Colombo Stock Exchange (Sri Lanka)
-    "BME": ".MC",     # Bolsa de Madrid (Spain)
-    "QSE": ".QA",     # Qatar Stock Exchange (Qatar)
-    "ASE": ".AT",     # Athens Stock Exchange (Greece)
-    "EGX": ".EG",     # Egyptian Stock Exchange (Egypt)
-    "TASE": ".TA",    # Tel Aviv Stock Exchange (Israel)
-    "DSE": ".BD",     # Dhaka Stock Exchange (Bangladesh)
-    "PSE": ".PH",     # Philippine Stock Exchange (Philippines)
-    "JSE": ".J",      # Johannesburg Stock Exchange (South Africa)
-    "PSE": ".PH",     # Philippine Stock Exchange
-    "SHSE": ".SS",    # Shanghai Stock Exchange (China)
-    "SZSE": ".SZ",    # Shenzhen Stock Exchange (China)
-    "BSE": ".IN",     # Bombay Stock Exchange (India)
-    "DAX": ".DE",     # Frankfurt (Germany)
-    "EGX": ".EG",     # Egyptian Stock Exchange (Egypt)
-    "MEX": ".MX",     # Mexican Stock Exchange (Mexico)
-    "IDEX": ".ID",    # Indonesia Stock Exchange (Indonesia)
-    "FTSE": ".FT",    # FTSE 100 Index (UK)
-}
 
 
 
@@ -141,7 +60,7 @@ def get_yahoo_ticker(ticker, exchange) -> None:
         exchange = exchange.upper()
     
     # Get the suffix for the exchange
-    suffix = exchange_suffixes.get(exchange, "")
+    suffix = EXCHANGES_SUFFIXES.get(exchange, "")
     
     if suffix:
         yahoo_ticker = ticker + suffix
@@ -149,8 +68,6 @@ def get_yahoo_ticker(ticker, exchange) -> None:
     else:
         return None  # No mapping found for that exchange
     
-
-
 def show_popup(title,message) :
     # Create the root window (it won't appear)
     root = tk.Tk()
@@ -251,6 +168,136 @@ def get_ticker_from_isin(isin, api_key=None):
     else:
         return f"Error: {response.status_code} - {response.text}"
 
+def export_sqlite_to_csv(db_name, table_name, output_csv):
+    """
+    Extract data from a SQLite3 database and export it to a CSV file.
+
+    Parameters:
+    db_name (str): The name of the SQLite database file.
+    table_name (str): The name of the table to export.
+    output_csv (str): The name of the output CSV file.
+
+    """
+    # Connect to the SQLite database
+    conn = sqlite3.connect(db_name)
+    cursor = conn.cursor()
+
+    # Execute a query to fetch all data from the table
+    cursor.execute(f"SELECT * FROM {table_name}")
+
+    # Fetch all rows from the result of the query
+    rows = cursor.fetchall()
+
+    # Open a CSV file for writing
+    with open(output_csv, 'w', newline='', encoding='utf-8') as csvfile:
+        csv_writer = csv.writer(csvfile)
+
+        # Write the column headers (optional)
+        column_names = [description[0] for description in cursor.description]  # Get column names
+        csv_writer.writerow(column_names)
+
+        # Write the data rows
+        csv_writer.writerows(rows)
+
+    # Close the cursor and the connection
+    cursor.close()
+    conn.close()
+
+    print(f"Data has been extracted to '{output_csv}'.")
+
+
+
+# Function to create the table if not exists
+def create_table_if_not_exists(tickers_data_df):
+    # Get the columns of the DataFrame
+    columns = tickers_data_df.columns
+
+    # Prepare the SQL for table creation dynamically
+    sql = 'CREATE TABLE IF NOT EXISTS tickers_data ('
+    sql += 'Date DATE, '
+    sql += 'Ticker TEXT, '
+    
+    # Adding columns dynamically based on DataFrame's column names (excluding 'Date' and 'Ticker')
+    for col in columns:
+        if col not in ['Date', 'Ticker']:  # Exclude 'Date' and 'Ticker' columns
+            if tickers_data_df[col].dtype == 'float64':
+                column_type = 'FLOAT'
+            elif tickers_data_df[col].dtype == 'int64':
+                column_type = 'INTEGER'
+            else:
+                column_type = 'TEXT'  # Default to TEXT for other data types
+            sql += f'{col} {column_type}, '
+
+    # Remove the trailing comma and space, and add the PRIMARY KEY for the 'Date' and 'Ticker' combination
+    sql = sql.rstrip(', ') + ', PRIMARY KEY (Date, Ticker))'
+    
+    # Execute the SQL to create the table
+    cursor.execute(sql)
+    conn.commit()
+
+# Function to alter the table if new columns are present
+def get_columns_from_db(conn, table_name):
+    """
+    Get the column names from the existing table in the database.
+    """
+    cursor = conn.cursor()
+    cursor.execute(f"PRAGMA table_info({table_name})")
+    columns = [column[1] for column in cursor.fetchall()]  # Fetch column names
+    return columns
+
+def alter_table_for_new_columns(conn, df_columns, table_name):
+    """
+    Alter the table to add columns that are missing in the database.
+    """
+    existing_columns = get_columns_from_db(conn, table_name)
+
+    # Determine which columns are not present in the existing table
+    missing_columns = [col for col in df_columns if col not in existing_columns]
+    
+    for column in missing_columns:
+        # Dynamically add the missing columns (we assume all are TEXT for simplicity)
+        alter_sql = f"ALTER TABLE {table_name} ADD COLUMN `{column}` TEXT"
+        cursor = conn.cursor()
+        cursor.execute(alter_sql)
+        print(f"Added new column: {column}")
+    
+    conn.commit()
+
+def store_new_tickers_data(tickers_data, yahoo_ticker, db_path="tickers_data.db"):
+    """
+    Store the new ticker data in the database with dynamic columns handling.
+    """
+    conn = sqlite3.connect(db_path)
+    
+    # Get the DataFrame and columns from Yahoo Finance data
+    tickers_data_df = tickers_data.copy()
+    
+    # Add 'Ticker' column dynamically if it doesn't exist in the DataFrame
+    tickers_data_df['Ticker'] = yahoo_ticker
+
+    # Dynamically adjust the table to match the DataFrame columns
+    alter_table_for_new_columns(conn, tickers_data_df.columns, 'tickers_data')
+    
+    # Create the dynamic SQL insert query
+    placeholders = ", ".join(["?"] * len(tickers_data_df.columns))
+    
+    # Escape column names by wrapping them in backticks
+    columns = ", ".join([f"`{col}`" for col in tickers_data_df.columns])
+    
+    insert_query = f"INSERT OR IGNORE INTO tickers_data ({columns}) VALUES ({placeholders})"
+    
+    # Insert data into the table
+    for _, row in tickers_data_df.iterrows():
+        conn.execute(insert_query, tuple(row))
+    
+    conn.commit()
+    print(f"Data for {yahoo_ticker} stored successfully!")
+    conn.close()
+
+
+
+
+
 
 
 
@@ -280,6 +327,9 @@ os.makedirs(date_folder, exist_ok=True)
 # Define the output file path inside the new subfolder
 output_file = os.path.join(date_folder, 'output_file.csv')
 
+# Connect to SQLite (You can use SQLAlchemy for other databases)
+conn = sqlite3.connect(f'{date_folder}/tickers_data.db')
+cursor = conn.cursor()
 
 
 # Get all CSV files in the 'source' folder
@@ -346,8 +396,11 @@ for ISIN in df.iloc[:, 3].unique():
     ticker = get_ticker_from_isin(ISIN)
     exchange = df[df.iloc[:, 3] == ISIN].iloc[:, 4].unique()[0]
     yahoo_ticker = get_yahoo_ticker(ticker, exchange)
+    print(yahoo_ticker)
     tickers_data = yf.Ticker(yahoo_ticker).history(start=min_date, end=max_date).reset_index() 
     tickers_data['Date'] = pd.to_datetime(tickers_data['Date']).dt.tz_localize(None).dt.date
+    # Store the new ticker data in DB
+    store_new_tickers_data(tickers_data,yahoo_ticker,f'{date_folder}/tickers_data.db')
     # Create a dictionary with 'Date' as key and 'Close' as value (using Date as the index)
     tickers_data_dict = dict(zip(tickers_data['Date'], tickers_data['Close']))
     if not tickers_data_dict:
@@ -390,6 +443,9 @@ for ISIN in df.iloc[:, 3].unique():
         # Append the result for the current date, product, and cumulative values
         cumulative_values.append([single_date, product,ISIN,place,exec_place, running_quantity, running_montant,running_value])
 
+# for debug
+# export_sqlite_to_csv(f'{date_folder}/tickers_data.db', 'tickers_data', 'dboutput.csv')
+
 # Create a DataFrame with the date, product, cumulative quantity, and cumulative 'Montant négocié'
 cumulative_df = pd.DataFrame(cumulative_values, columns=['Date', 'Products','ISIN','Place','Exec Place', 'Qty', 'Buying_value','Actual_value'])
 
@@ -402,6 +458,7 @@ cumulative_df.to_csv(output_file, index=False)
 # ===============================================================
 # Create Dataset
 # ===============================================================
+
 
 
 # plots
@@ -492,6 +549,107 @@ plots.append(fig0)
 
 
 # Plot 
+def plot_variation(cumulative_df, plots):
+    # Step 1: Convert 'Date' to datetime format
+    cumulative_df['Date'] = pd.to_datetime(cumulative_df['Date'])
+
+    # Step 2: Group by 'Date' and calculate the total Buying_value and Actual_value per date
+    grouped = cumulative_df.groupby('Date').agg({
+        'Buying_value': 'sum',
+        'Actual_value': 'sum'
+    }).reset_index()
+
+    # Step 3: Calculate the percentage variation for each grouped date
+    grouped['Variation_%'] = ((grouped['Actual_value'] - grouped['Buying_value']) / grouped['Buying_value']) * 100
+
+    # Step 4: Create the plot
+    fig, ax = plt.subplots(figsize=(10,6))
+    # Step 6: Loop through the data to plot each point with the appropriate color
+    for i in range(1, len(grouped)):
+        if grouped['Variation_%'].iloc[i] >= 0:
+            color = 'green'  # Positive or 0% variation
+        else:
+            color = 'red'  # Negative variation
+        
+        # Plot the segment between consecutive points (i-1 and i)
+        ax.plot(grouped['Date'].iloc[i-1:i+1], 
+                grouped['Variation_%'].iloc[i-1:i+1], 
+                color=color, linestyle='-', label='All' if i == len(grouped) - 1 else "")
+
+    # Step 5: Add labels and title
+    ax.set_xlabel('Date')
+    ax.set_ylabel('Variation (%)')
+    ax.set_title('Variation in % between Buying and Actual Values by Date')
+
+    # Step 6: Add grid, format x-axis labels, and tight layout
+    ax.grid(True)
+    ax.tick_params(axis='x', rotation=45)  # Rotate x-axis labels
+    ax.yaxis.set_major_formatter(PercentFormatter(xmax=100))
+    plt.tight_layout()
+
+    # Step 7: Add a horizontal line at 0% for visual reference
+    ax.axhline(y=0, color='black', linestyle='--', linewidth=1)
+    # Step 7: Append the figure to the plots list
+    plots.append(fig)
+plot_variation(cumulative_df, plots)
+
+def plot_variation_by_isin(cumulative_df, plots):
+    # Step 1: Convert 'Date' to datetime format
+    cumulative_df['Date'] = pd.to_datetime(cumulative_df['Date'])
+
+    # Step 2: Loop through each unique ISIN
+    for isin in cumulative_df['ISIN'].unique():
+        # Filter the data for the current ISIN
+        isin_data = cumulative_df[cumulative_df['ISIN'] == isin]
+        # Get the product name for the current ISIN (assuming there's only one product per ISIN)
+        product_name = isin_data['Products'].unique()[0]
+        
+        # Step 3: Group by 'Date' and calculate the total Buying_value and Actual_value per date for this ISIN
+        grouped = isin_data.groupby('Date').agg({
+            'Buying_value': 'sum',
+            'Actual_value': 'sum'
+        }).reset_index()
+
+        # Step 4: Calculate the percentage variation for each grouped date
+        grouped['Variation_%'] = ((grouped['Actual_value'] - grouped['Buying_value']) / grouped['Buying_value']) * 100
+
+        # Step 5: Create the plot for this ISIN
+        fig, ax = plt.subplots(figsize=(10, 6))
+
+        # Step 6: Loop through the data to plot each point with the appropriate color
+        for i in range(1, len(grouped)):
+            if grouped['Variation_%'].iloc[i] >= 0:
+                color = 'green'  # Positive or 0% variation
+            else:
+                color = 'red'  # Negative variation
+            
+            # Plot the segment between consecutive points (i-1 and i)
+            ax.plot(grouped['Date'].iloc[i-1:i+1], 
+                    grouped['Variation_%'].iloc[i-1:i+1], 
+                    color=color, linestyle='-', label=product_name if i == len(grouped) - 1 else "")
+
+        # Step 7: Add labels and title
+        ax.set_xlabel('Date')
+        ax.set_ylabel('Variation (%)')
+        ax.set_title(f'Variation in % {isin} ({product_name})')
+
+
+        # Step 7: Add a horizontal line at 0% for visual reference
+        ax.axhline(y=0, color='black', linestyle='--', linewidth=1)
+
+        # Step 8: Format y-axis as percentage
+        ax.yaxis.set_major_formatter(PercentFormatter(xmax=100))
+
+        # Step 9: Add grid, format x-axis labels, and tight layout
+        ax.grid(True)
+        ax.tick_params(axis='x', rotation=45)  # Rotate x-axis labels
+        plt.tight_layout()
+
+        # Step 10: Append the figure to the plots list
+        plots.append(fig)
+plot_variation_by_isin(cumulative_df, plots)
+
+
 
 # Assuming today_data is already defined and includes the 'Date' column
 df_today_data = today_data.copy()
@@ -631,8 +789,6 @@ plots.append(plt_all_tickers)
 # 3. Create and store the combined plot for all tickers
 plt_all_tickers_bought = plt.figure(figsize=(12, 6))
 for isin in cumulative_df['ISIN'].unique():
-    # Get the ticker for the current ISIN (assuming the `get_ticker_from_isin()` function)
-    #ticker = get_ticker_from_isin(isin, api_key="YOUR_API_KEY")  # Replace with your actual API key
     # Filter the data for the current ISIN
     isin_data = cumulative_df[cumulative_df['ISIN'] == isin]
     product_name = cumulative_df[cumulative_df['ISIN'] == isin]['Products'].unique()[0]
@@ -648,11 +804,10 @@ plt.tight_layout()
 # Store the plot in the array
 plots.append(plt_all_tickers_bought)
 
-'''
+
 # 4. Create a pie chart of portfolio distribution by ISIN and actual value
 # Calculate total value for each ISIN
-Product_value = cumulative_df.groupby('Products')['Actual_value'].sum()
-print (Product_value)
+Product_value = today_data.groupby('Products')['Actual_value'].sum()
 # Pie chart for portfolio distribution
 plt_pie = plt.figure(figsize=(12, 6))
 plt.pie(Product_value, labels=Product_value.index, autopct='%1.1f%%', startangle=140)
@@ -660,7 +815,7 @@ plt.title('Portfolio Distribution By Product')
 plt.axis('equal')  # Equal aspect ratio ensures the pie chart is circular.
 # Store the pie chart in the array
 plots.append(plt_pie)
-'''
+
 
 # Create a PdfPages object to save all the plots into a single PDF
 pdf_filepath = os.path.join(date_folder, 'Degiro Analysis.pdf')
