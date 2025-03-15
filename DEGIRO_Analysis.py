@@ -97,7 +97,7 @@ def open_system(path):
 
 def detect_delimiter(file_path):
     with open(file_path, 'r', newline='') as file:
-        sample = file.read(2048)  # Read a sample of the file
+        sample = file.read(10000)  # Read a sample of the file
         dialect = csv.Sniffer().sniff(sample)  # Sniff the dialect
         return dialect.delimiter
 
@@ -275,6 +275,9 @@ def store_new_tickers_data(tickers_data, yahoo_ticker, db_path="tickers_data.db"
     # Add 'Ticker' column dynamically if it doesn't exist in the DataFrame
     tickers_data_df['Ticker'] = yahoo_ticker
 
+    # Create the table if it doesn't exist
+    create_table_if_not_exists(tickers_data_df)
+    
     # Dynamically adjust the table to match the DataFrame columns
     alter_table_for_new_columns(conn, tickers_data_df.columns, 'tickers_data')
     
@@ -475,13 +478,19 @@ today = cumulative_df['Date'].max()
 
 # Filter for the latest data
 today_data = cumulative_df[cumulative_df['Date'] == today].copy()
-print(today_data)
-
+# Calculate the total row
+total_row = today_data[['Buying_value', 'Actual_value']].sum()
+# Convert the total row to a DataFrame (since pd.concat expects DataFrames)
+total_row_df = pd.DataFrame([total_row])
+# Concatenate the original DataFrame with the total row
+today_data = pd.concat([today_data, total_row_df], ignore_index=True)
 
 # Calculate the percentage difference for Actual_value vs Buying_value using .loc to avoid SettingWithCopyWarning
 today_data.loc[:, 'Value_diff'] = (today_data['Actual_value'] - today_data['Buying_value'])
 today_data.loc[:, 'Percentage_diff'] = ((today_data['Actual_value'] - today_data['Buying_value']) / today_data['Buying_value']) * 100
+print(today_data)
 
+exit()
 # 1. KPI: Actual_value vs Buying_value (today), in percentage
 # Calculate the absolute and percentage delta for today
 total_actual_value = today_data['Actual_value'].sum()
@@ -655,6 +664,9 @@ plot_variation_by_isin(cumulative_df, plots)
 df_today_data = today_data.copy()
 
 df = today_data.copy()
+
+
+
 
 # Format the values for table display
 df['Buying_value'] = df['Buying_value'].apply(lambda x: f"€ {x:,.2f}")
