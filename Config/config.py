@@ -90,5 +90,7 @@ EXCHANGES_SUFFIXES = {
     "IDEX": ".ID",    # Indonesia Stock Exchange (Indonesia)
     "FTSE": ".FT",    # FTSE 100 Index (UK)
 }
+SOURCE_FOLDER = 'source'
+OUTPUR_FOLDER = 'output'
 
 print("config.py loaded successfully")
