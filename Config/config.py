@@ -14,7 +14,7 @@ EXCHANGES_SUFFIXES = {
     "XETR": ".DE",    # Frankfurt Stock Exchange (Germany)
     "NYS": ".N",      # New York Stock Exchange (NYSE)
     "TSE": ".T",      # Tokyo Stock Exchange (Japan)
-    "TDG": ".DE",      
+    "TDG": ".DE", # Incorrect but Tradegate isn't found on yfin      
     "EPA": ".PA",     # Euronext Paris (France)
     "BVMF": ".SA",    # B3 - São Paulo Stock Exchange (Brazil)
     "SSE": ".SS",     # Shanghai Stock Exchange (China)

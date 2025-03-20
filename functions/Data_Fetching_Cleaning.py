@@ -9,44 +9,67 @@
 # ==============================================================================================================================
 # Imports
 # ==============================================================================================================================
-from matplotlib.ticker import PercentFormatter
 import yfinance as yf #https://github.com/ranaroussi/yfinance
 import pandas as pd
 import requests
-import json
 import glob
-import os
-from datetime import datetime
-import matplotlib.pyplot as plt
-import seaborn as sns
-from matplotlib.backends.backend_pdf import PdfPages
 import tkinter as tk
 from tkinter import messagebox
 import csv
 import sys
-import platform
-import numpy as np
-from datetime import timedelta
-import textwrap
 import sqlite3  # Use SQLite or replace with SQLAlchemy for other databases
+import socket
 
 
 # Const
 from Config.config import *
-
-
   
 def show_popup(title,message) :
+    """
+    Display a simple popup message box with the given title and message.
+
+    This function creates a hidden tkinter root window, shows a message box with 
+    the specified title and message, and then quits the tkinter instance.
+
+    Parameters:
+        title (str): The title of the popup message box.
+        message (str): The message to display in the popup.
+
+    Returns:
+        None
+    """
     # Create the root window (it won't appear)
     root = tk.Tk()
     root.withdraw()  # Hide the root window
     # Show the popup message box
-    messagebox.showinfo(title,message)
+    messagebox.showinfo(title, message)
     # Close the tkinter instance after the popup
     root.quit()
 
-# Function to dynamically create Yahoo Finance tickers based on ISIN and exchange
 def get_yahoo_ticker(ticker, exchange) -> None:
+    """
+    Generates a Yahoo Finance ticker symbol based on the provided stock ticker and exchange.
+
+    Args:
+        ticker (str): The stock ticker symbol, typically the company symbol like 'AAPL', 'GOOG', etc.
+        exchange (str): The stock exchange where the ticker is listed. Should be a string, such as 'NASDAQ', 'LSE', etc.
+
+    Returns:
+        str or None: The constructed Yahoo Finance ticker symbol (e.g., 'AAPL', 'GOOG', etc.) with the appropriate suffix for the exchange.
+        Returns None if no suffix mapping is found for the provided exchange.
+
+    Notes:
+        - The function expects that the exchange is passed in as a string. If not, it will not proceed.
+        - The exchange string is converted to uppercase before checking for the corresponding suffix.
+        - The function uses a predefined mapping (`EXCHANGES_SUFFIXES`) for suffixes based on the exchange.
+
+    Example:
+        >>> get_yahoo_ticker('AAPL', 'NASDAQ')
+        'AAPL'  # Assuming the suffix for NASDAQ is empty or non-existent.
+
+        >>> get_yahoo_ticker('GOOG', 'LSE')
+        'GOOG.L'  # Assuming the suffix for LSE is '.L'
+    """
     # Ensure exchange is a string before applying .upper()
     if isinstance(exchange, str):
         exchange = exchange.upper()
@@ -60,15 +83,76 @@ def get_yahoo_ticker(ticker, exchange) -> None:
     else:
         return None  # No mapping found for that exchange
     
-
+def is_internet_up():
+    """
+    Function to test if the internet is up by attempting to connect to Google's DNS server (8.8.8.8).
+    
+    Returns:
+    bool: True if the internet is reachable, False otherwise.
+    """
+    try:
+        # Try to establish a socket connection to a reliable DNS server (8.8.8.8)
+        socket.create_connection(("8.8.8.8", 53), timeout=5)
+        return True
+    except (socket.timeout, socket.error):
+        # If unable to connect, return False
+        return False
+    
 def detect_delimiter(file_path):
+    """
+    Detects the delimiter used in a CSV file by inspecting a sample of its contents.
+
+    Args:
+        file_path (str): The path to the CSV file whose delimiter is to be detected.
+
+    Returns:
+        str: The delimiter character used in the CSV file (e.g., ',', ';', '\t').
+        
+    Raises:
+        csv.Error: If the delimiter cannot be determined from the file's sample.
+
+    Notes:
+        - This function reads a sample of the first 10,000 characters from the file to guess the delimiter.
+        - It uses the `csv.Sniffer` class from the Python `csv` module to detect the delimiter.
+        - The function may raise a `csv.Error` if the sample is insufficient or the file format is irregular.
+
+    Example:
+        >>> detect_delimiter('data.csv')
+        ','  # Returns the delimiter used in the CSV file (e.g., comma, tab, etc.)
+    """
     with open(file_path, 'r', newline='') as file:
         sample = file.read(10000)  # Read a sample of the file
         dialect = csv.Sniffer().sniff(sample)  # Sniff the dialect
         return dialect.delimiter
 
 def IsDEGIROexport(df2):
-       # Define the expected data types by column index
+    """
+    Verifies whether a given DataFrame matches the expected column data types for a DEGIRO export.
+
+    Args:
+        df2 (pandas.DataFrame): The DataFrame to be checked. It represents the exported data from DEGIRO.
+
+    Returns:
+        bool: True if the DataFrame matches the expected column data types and structure, False otherwise.
+
+    Notes:
+        - The function checks that the number of columns in the DataFrame matches the expected number.
+        - It verifies that each column's data type corresponds to a predefined type in the `spec_dtypes` list.
+        - The `spec_dtypes` list defines the expected data types for the columns by index, where:
+          - "object" represents string columns.
+          - "int64", "float64" represent integer and floating-point numeric columns respectively.
+        - If any column does not match the expected data type, the function returns False.
+        - If the column count does not match, the function also returns False.
+
+    Example:
+        >>> IsDEGIROexport(df)
+        True  # If df matches the expected data types and structure.
+        
+        >>> IsDEGIROexport(df_invalid)
+        False  # If df_invalid does not match the expected structure or data types.
+    """
+    
+    # Define the expected data types by column index
     spec_dtypes = [
         "object", "object", "object", "object", "object", "object", "int64", "float64", 
         "object", "float64", "object", "float64", "object", "float64", "float64", "object", 
@@ -169,19 +253,40 @@ def export_sqlite_to_csv(db_name, table_name, output_csv):
     cursor.close()
     conn.close()
 
-    print(f"Data has been extracted to '{output_csv}'.")
+    show_popup('DB (CSV) Saved', f'DB saved as CSV to {output_csv}')
 
 
 
-# Function to create the table if not exists
-def create_table_if_not_exists(tickers_data_df,db_name):
+def create_table_if_not_exists(tickers_data_df, db_name):
+    """
+    Creates a table in the specified SQLite database if it doesn't already exist, 
+    based on the structure of the provided DataFrame.
+
+    Args:
+        tickers_data_df (pandas.DataFrame): The DataFrame containing the data. Its column names and data types are used to 
+                                             dynamically define the table structure.
+        db_name (str): The name of the SQLite database in which the table will be created.
+
+    Returns:
+        None: The function does not return any value. It modifies the database by creating the table if needed.
+
+    Notes:
+        - The table is named `tickers_data` and consists of columns derived from the DataFrame's column names.
+        - The function assumes that the `Date` and `Ticker` columns are always present and are used as the composite primary key.
+        - Columns of type `float64` are stored as `FLOAT`, columns of type `int64` as `INTEGER`, and other columns are stored as `TEXT`.
+        - If the table already exists, the function does nothing.
+
+    Example:
+        >>> create_table_if_not_exists(df, 'stocks.db')
+        # Creates a table named 'tickers_data' in the 'stocks.db' database based on the columns in df.
+    """
+    
     # Get the columns of the DataFrame
     columns = tickers_data_df.columns
 
     # Connect to the SQLite database
     conn = sqlite3.connect(db_name)
     cursor = conn.cursor()
-
 
     # Prepare the SQL for table creation dynamically
     sql = 'CREATE TABLE IF NOT EXISTS tickers_data ('
@@ -205,6 +310,7 @@ def create_table_if_not_exists(tickers_data_df,db_name):
     # Execute the SQL to create the table
     cursor.execute(sql)
     conn.commit()
+    conn.close()
 
 # Function to alter the table if new columns are present
 def get_columns_from_db(conn, table_name):
@@ -268,30 +374,73 @@ def store_new_tickers_data(tickers_data, yahoo_ticker, db_path="tickers_data.db"
     print(f"Data for {yahoo_ticker} stored successfully!")
     conn.close()
 
-def create_dataset(SourceFolder,OutputFolder) :
-        
-    # Connect to SQLite (You can use SQLAlchemy for other databases)
-    conn = sqlite3.connect(f'{OutputFolder}/tickers_data.db')
-    cursor = conn.cursor()
+def create_dataset(SourceFolder):
+    """
+    This function processes a folder containing CSV files of Degiro exports, detects the delimiter, reads the data into 
+    a pandas DataFrame, and calculates cumulative quantities and values for each product (identified by ISIN) 
+    based on historical stock prices fetched from Yahoo Finance.
 
+    The function performs the following tasks:
+    1. Retrieves all CSV files from the specified 'SourceFolder'.
+    2. Validates that the folder contains files and that the internet connection is active.
+    3. Reads each CSV file, checking if it conforms to Degiro's export format.
+    4. Converts the 'Date' column to a pandas datetime format.
+    5. Calculates cumulative quantities and values for each product (based on ISIN) across all dates in the data range.
+    6. Fetches historical stock price data for each product from Yahoo Finance.
+    7. Returns a DataFrame with the cumulative values for each product on each date in the data range.
 
+    Args:
+        SourceFolder (str): The path to the folder containing the CSV files for Degiro exports.
+
+    Returns:
+        pd.DataFrame: A DataFrame containing the cumulative quantities and values for each product across the date range.
+        The columns include:
+            - 'Date': The date of the data.
+            - 'Products': The name of the product (from the Degiro export).
+            - 'ISIN': The ISIN code of the product.
+            - 'Place': The exchange where the product is traded.
+            - 'Exec Place': The execution place (trading venue).
+            - 'Qty': The cumulative quantity of the product as of that date.
+            - 'Buying_value': The cumulative value of the product based on quantity.
+            - 'Actual_value': The cumulative value of the product based on the stock's closing price on that date.
+
+    Raises:
+        SystemExit: If the source folder is empty, if no internet connection is detected, or if the CSV file does not conform to Degiro's export format.
+
+    Notes:
+        - The function assumes that the first column in the CSV files represents the 'Date' field.
+        - It assumes the third column represents the 'Produit' field (product name), the fourth column represents the 'ISIN', 
+          the fifth column represents the 'Place boursiè' (exchange), and the sixth column represents the 'Lieu d'exécution' 
+          (execution place).
+        - The function uses the Yahoo Finance API to fetch historical stock data based on the product's ISIN and exchange.
+        - If there is no internet connection or if no stock price data is available for the requested dates, the function will 
+          handle these cases by skipping or using the closest available date.
+
+    Example:
+        df = create_dataset('path_to_your_csv_folder')
+        print(df.head())
+    """
+    
     # Get all CSV files in the 'source' folder
     csv_files = glob.glob(f'{SourceFolder}/*.csv')
     if not csv_files :
         show_popup("Source Folder Empty", "Please fill source folder with your Degiro export. End of process.")
         sys.exit()
 
+    # check if internet is up. if not, close it
+    if not is_internet_up() :
+        show_popup("No Internet", "Please connect to Internet. End of process.")
+        sys.exit()
+
     # Iterate over files, detect the delimiter, and read them into DataFrame
     dfs = []
     for file in csv_files:
-
         delim = detect_delimiter(file)
         df = pd.read_csv(file, delimiter=delim)  # Use detected delimiter
         # Check if Df is based on Degiro standards
         if not IsDEGIROexport(df) :
             show_popup("Export Not Ok", f"File {file} is not a supported DEGIRO export format. Please format it proprely. End of process.")
             sys.exit() 
-        
         dfs.append(df)
     # Concatenate all DataFrames
     df = pd.concat(dfs, ignore_index=True)
@@ -319,8 +468,6 @@ def create_dataset(SourceFolder,OutputFolder) :
     Index: 16, Column Title: Montant négocié
     '''
 
-
-
     for ISIN in df.iloc[:, 3].unique():
         # Filter data for the current product
         product_df = df[df.iloc[:, 3] == ISIN]
@@ -336,8 +483,7 @@ def create_dataset(SourceFolder,OutputFolder) :
         yahoo_ticker = get_yahoo_ticker(ticker, exchange)
         tickers_data = yf.Ticker(yahoo_ticker).history(start=min_date, end=max_date).reset_index() 
         tickers_data['Date'] = pd.to_datetime(tickers_data['Date']).dt.tz_localize(None).dt.date
-        # Store the new ticker data in DB
-        store_new_tickers_data(tickers_data,yahoo_ticker,f'{OutputFolder}/tickers_data.db')
+
         # Create a dictionary with 'Date' as key and 'Close' as value (using Date as the index)
         tickers_data_dict = dict(zip(tickers_data['Date'], tickers_data['Close']))
         if not tickers_data_dict:
@@ -365,8 +511,6 @@ def create_dataset(SourceFolder,OutputFolder) :
                     # Handle the case where no valid dates are found
                     closest_date = None  # or any other default value you prefer
                     daily_value = 0
-                
-
             # Update running totals
             running_quantity += daily_quantity
             running_montant += daily_montant
@@ -380,15 +524,55 @@ def create_dataset(SourceFolder,OutputFolder) :
             # Append the result for the current date, product, and cumulative values
             cumulative_values.append([single_date, product,ISIN,place,exec_place, running_quantity, running_montant,running_value])
 
-    # for debug
-    # export_sqlite_to_csv(f'{date_folder}/tickers_data.db', 'tickers_data', 'dboutput.csv')
-
     # Create a DataFrame with the date, product, cumulative quantity, and cumulative 'Montant négocié'
     cumulative_df = pd.DataFrame(cumulative_values, columns=['Date', 'Products','ISIN','Place','Exec Place', 'Qty', 'Buying_value','Actual_value'])
-
-    # Define the output file path inside the new subfolder
-    output_file = os.path.join(OutputFolder, 'output_file.csv')
-    # Export the DataFrame to the CSV file in the 'output' folder
-    cumulative_df.to_csv(output_file, index=False)
     
     return cumulative_df
+
+
+def store_tickers_data_sqlite3_DB(df, output_folder):
+    """
+    This function stores stock data for unique ISIN values in a SQLite database.
+    
+    Parameters:
+    df (pandas.DataFrame): A DataFrame containing stock data with columns like 'ISIN', 'Place', 'Date', etc.
+    output_folder (str): The directory where the SQLite database ('tickers_data.db') will be saved.
+
+    Process:
+    - Iterates over unique ISIN values in the DataFrame.
+    - Retrieves the corresponding stock ticker and Yahoo Finance ticker symbol.
+    - Fetches historical stock data from Yahoo Finance.
+    - Stores the stock data in an SQLite database.
+    """
+    
+    # Initialize SQLite connection to store data
+    conn = sqlite3.connect(f'{output_folder}/tickers_data.db')
+    cursor = conn.cursor()
+
+    # Iterate over each unique ISIN in the DataFrame to store its data
+    for isin in df['ISIN'].unique():
+        # Filter the DataFrame for the current ISIN to extract relevant information
+        ISIN = df[df['ISIN'] == isin]['ISIN'].unique()[0]
+        exchange = df[df['ISIN'] == isin]['Place'].unique()[0]
+
+        # Get the stock ticker symbol using the ISIN and exchange
+        ticker = get_ticker_from_isin(ISIN)
+        yahoo_ticker = get_yahoo_ticker(ticker, exchange)
+
+        # Retrieve the historical stock data from Yahoo Finance
+        min_date = pd.to_datetime(df['Date'].min())  # Start date for stock data
+        max_date = pd.to_datetime(df['Date'].max())  # End date for stock data
+        tickers_data = yf.Ticker(yahoo_ticker).history(start=min_date, end=max_date).reset_index()
+        
+        # Clean and format the 'Date' column to remove timezone info and convert to date only
+        tickers_data['Date'] = pd.to_datetime(tickers_data['Date']).dt.tz_localize(None).dt.date
+
+        # Store the fetched stock data in the SQLite database
+        store_new_tickers_data(tickers_data, yahoo_ticker, f'{output_folder}/tickers_data.db')
+
+    # Commit the changes to the database and close the connection
+    conn.commit()
+    conn.close()
+
+    # Show a popup message indicating the data has been saved
+    show_popup('DB Saved', f'DB saved to {output_folder}')
