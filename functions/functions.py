@@ -12,26 +12,16 @@
 # Const
 from Config.config import *
 # ----- Standard
-from matplotlib.ticker import PercentFormatter
-import yfinance as yf #https://github.com/ranaroussi/yfinance
-import pandas as pd
-import requests
-import json
-import glob
 import os
-from datetime import datetime
 import matplotlib.pyplot as plt
-import seaborn as sns
 from matplotlib.backends.backend_pdf import PdfPages
 import tkinter as tk
 from tkinter import messagebox
-import csv
-import sys
 import platform
-import numpy as np
-from datetime import timedelta
-import textwrap
-import sqlite3  # Use SQLite or replace with SQLAlchemy for other databases
+
+def create_output_folder(date_folder) :
+    os.makedirs(date_folder, exist_ok=True)
+
 
 def show_popup(title, message):
     """

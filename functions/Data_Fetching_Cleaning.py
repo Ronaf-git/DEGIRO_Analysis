@@ -19,7 +19,7 @@ import csv
 import sys
 import sqlite3  # Use SQLite or replace with SQLAlchemy for other databases
 import socket
-
+import os
 
 # Const
 from Config.config import *
@@ -158,7 +158,7 @@ def IsDEGIROexport(df2):
         "object", "float64", "object", "float64", "object", "float64", "float64", "object", 
         "float64", "object", "object"
     ]
-    
+
     # Check if the number of columns match
     if len(spec_dtypes) == len(df2.columns):
         # Check data types by index
@@ -254,8 +254,6 @@ def export_sqlite_to_csv(db_name, table_name, output_csv):
     conn.close()
 
     show_popup('DB (CSV) Saved', f'DB saved as CSV to {output_csv}')
-
-
 
 def create_table_if_not_exists(tickers_data_df, db_name):
     """
@@ -420,11 +418,12 @@ def create_dataset(SourceFolder):
         df = create_dataset('path_to_your_csv_folder')
         print(df.head())
     """
-    
+    os.makedirs(SourceFolder, exist_ok=True)
+
     # Get all CSV files in the 'source' folder
     csv_files = glob.glob(f'{SourceFolder}/*.csv')
     if not csv_files :
-        show_popup("Source Folder Empty", "Please fill source folder with your Degiro export. End of process.")
+        show_popup("Source Folder Empty", F"Please fill source folder ({SourceFolder})  with your Degiro export. End of process.")
         sys.exit()
 
     # check if internet is up. if not, close it

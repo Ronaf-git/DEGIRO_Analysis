@@ -1,13 +1,9 @@
 # pip install pyqt5 matplotlib
 import Config.config as config  # Correct way to import the config module with an alias
 
-from matplotlib.figure import Figure
-from PyQt5.QtCore import Qt
 import sys
-import matplotlib.pyplot as plt
 from PyQt5.QtWidgets import QApplication,QGridLayout,QLineEdit,QCheckBox, QMainWindow, QVBoxLayout, QWidget, QTabWidget ,QWidget, QScrollArea, QPushButton, QLabel
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from PyQt5.QtGui import QFont
 # ----- From Files
 from functions.functions import *
 from functions.Data_Fetching_Cleaning import *
@@ -191,6 +187,9 @@ class ButtonTab(QWidget):
         self.button3 = QPushButton("Export dataset as CSV", self)
         self.button4 = QPushButton("Export stock data as SQL DB & CSV", self)
 
+        # Automatically add buttons to the instance, then apply size and style
+        self.set_button_size_and_style()
+
         # Connect buttons to functions with the required parameters using lambda
         self.button1.clicked.connect(lambda: self.Export_PDF())
         self.button2.clicked.connect(lambda: self.Export_PNG())
@@ -208,21 +207,31 @@ class ButtonTab(QWidget):
         layout.addWidget(self.button4, 2, 1)
 
         self.setLayout(layout)
+    def set_button_size_and_style(self):
+        # Iterate through each attribute in the instance that is a QPushButton
+        for name, button in vars(self).items():
+            if isinstance(button, QPushButton):
+                button.setFixedSize(500, 150)
+                button.setStyleSheet("font-size: 25px; padding: 15px;")
 
     def Export_PDF(self):
-        # Call the external function with the instance parameters
+        create_output_folder(self.date_folder)
         plots_saveAs_OnePDF(self.pdf_filepath, self.plots)
         open_system(self.pdf_filepath)
 
     def Export_PNG(self):
-        # Call the external function with the instance parameters
+        create_output_folder(self.date_folder)
         plots_saveAs_PNG(self.date_folder, self.plots)
 
     def Export_CSV(self):
+        create_output_folder(self.date_folder)
         export_df_csv(self.date_folder,self.df)
     def Export_DB(self):
+        create_output_folder(self.date_folder)
         store_tickers_data_sqlite3_DB(self.df, self.date_folder)
         export_sqlite_to_csv(f'{self.date_folder}/tickers_data.db', 'tickers_data', f'{self.date_folder}/dboutput.csv')
+     
+
 
 
 # New ConfigEditTab to edit the config file variables

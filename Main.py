@@ -10,6 +10,8 @@
 
 # --- If running from python : install requirements (packages)
 # from Config.requirements import *
+# --- Install/Create Exe
+#pyinstaller --onefile --noconsole Main.py
 
 # ==============================================================================================================================
 # Imports
@@ -26,18 +28,15 @@ from functions.callAllFunctions import *
 # ==============================================================================================================================
 # Functions
 # ==============================================================================================================================
-def get_exe_dir():
-    # Check if the code is being run as a PyInstaller executable
-    if hasattr(sys, '_MEIPASS'):  # PyInstaller sets _MEIPASS when running as an exe
-        return sys._MEIPASS  # Return the temporary folder where the exe is running
+def get_exe_dir(relative_path):
+    if getattr(sys, 'frozen', False):
+        # If running from a bundled .exe, sys.executable points to the .exe file
+        base_path = os.path.dirname(sys.executable)  # Directory of the .exe
     else:
-        try:
-            # For regular Python script, use the script's directory
-            return os.path.dirname(os.path.realpath(__file__))
-        except NameError:
-            # In Jupyter or interactive mode, __file__ doesn't exist, so fallback to the current working directory
-            return os.getcwd()  # Return the current working directory in Jupyter or interactive mode
-
+        # If running from the source code (not frozen), use the current working directory
+        base_path = os.path.dirname(relative_path)
+    # Combine base path with relative path to get the full path to the resource
+    return base_path
 # ==============================================================================================================================
 # Variables 
 # ==============================================================================================================================
@@ -45,7 +44,7 @@ def get_exe_dir():
 current_date = datetime.now().strftime('%Y-%m-%d')
 
 # Source folder, output folder
-exe_dir = get_exe_dir()
+exe_dir = get_exe_dir(__file__)
 source_folder = os.path.join(exe_dir, SOURCE_FOLDER)
 output_folder = os.path.join(exe_dir, OUTPUR_FOLDER)
 date_folder = os.path.join(output_folder, current_date)
@@ -55,9 +54,9 @@ pdf_filepath = os.path.join(date_folder, 'Degiro Analysis.pdf')
 # Init 
 # ==============================================================================================================================
 # Create folders
-os.makedirs(source_folder, exist_ok=True)
-os.makedirs(output_folder, exist_ok=True)
-os.makedirs(date_folder, exist_ok=True)
+
+    
+
 
 # ===============================================================
 # Create Dataset
