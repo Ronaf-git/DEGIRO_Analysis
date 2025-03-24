@@ -212,7 +212,9 @@ def plot_total_pct_by_date(df):
     # Return the figure object containing the plot
     return fig
 
-def plot_total_by_date(df):
+import matplotlib.pyplot as plt
+
+def plot_total_by_date(df, start_date=None, end_date=None):
     """
     Plots the total portfolio value over time, comparing the actual value ('Actual_value') 
     with the invested value ('Buying_value'), and highlights the progress of the portfolio.
@@ -222,7 +224,9 @@ def plot_total_by_date(df):
             - 'Date': A datetime or string column representing the dates of each observation.
             - 'Actual_value': A numerical column representing the actual value of the portfolio at each date.
             - 'Buying_value': A numerical column representing the invested value of the portfolio at each date.
-    Montant
+        start_date (str or datetime, optional): The start date for filtering the data (inclusive).
+        end_date (str or datetime, optional): The end date for filtering the data (inclusive).
+        
     Returns:
         plt.Figure: A matplotlib figure object containing the plot.
 
@@ -230,20 +234,22 @@ def plot_total_by_date(df):
     - Green segments represent periods where the 'Actual_value' is higher than the 'Buying_value'.
     - Red segments represent periods where the 'Actual_value' is lower than the 'Buying_value'.
     - A blue line represents the 'Buying_value' (invested value) throughout the time period.
-    
-    The x-axis represents time (the 'Date' column), and the y-axis represents the value (portfolio value).
-    
-    The plot also includes the following:
-    - Title: 'Portfolio Progress'.
-    - X-axis label: 'Date'.
-    - Y-axis label: 'Value'.
-    - Legends to distinguish between the 'Product value' and 'Invested value'.
-    - Date labels rotated for better readability.
     """
+    # Convert 'Date' column to datetime if it's not already
+    df['Date'] = pd.to_datetime(df['Date'])
+
+    # Filter the dataframe based on the start_date and end_date (if provided)
+    if start_date is not None:
+        df = df[df['Date'] >= pd.to_datetime(start_date)]
+    if end_date is not None:
+        df = df[df['Date'] <= pd.to_datetime(end_date)]
+    
     # Create a copy of the dataframe to avoid modifying the original
     df_copy = df.copy()
-    # Create and store the plot for the total  Actual_value by date
+    
+    # Create and store the plot for the total Actual_value by date
     fig = plt.figure(figsize=(12, 6))
+    
     # Loop through the data to plot each point with the appropriate color
     for i in range(1, len(df_copy)):
         # Check if 'Actual_value' is ahead or not for this segment
@@ -254,11 +260,10 @@ def plot_total_by_date(df):
         
         # Plot the segment between consecutive points (i-1 and i)
         plt.plot(df_copy['Date'].iloc[i-1:i+1], 
-                df_copy['Actual_value'].iloc[i-1:i+1], 
-                color=color,label='Product value' if i == len(df_copy) - 1 else "", linestyle='-')
+                 df_copy['Actual_value'].iloc[i-1:i+1], 
+                 color=color, label='Product value' if i == len(df_copy) - 1 else "", linestyle='-')
 
-
-    # Plot the 'Cumulative_Montant_négocié' line in red
+    # Plot the 'Buying_value' line in blue
     plt.plot(df_copy['Date'], df_copy['Buying_value'], color='Blue', label='Invested value', linestyle='-')
 
     plt.title('Portfolio Progress')
@@ -269,6 +274,7 @@ def plot_total_by_date(df):
     plt.tight_layout()
 
     return fig
+
 
 def plots_ISIN_by_date(df):
     """
@@ -604,12 +610,13 @@ def plot_pie_portfolio_by_ISIN(df):
     """
     # Create a copy of the dataframe to avoid modifying the original
     df_copy = df.copy()
+    current_date = df_copy['Date'].max().strftime('%d/%m/%Y')
     # Calculate total value for each ISIN
     Product_value = df_copy.groupby('Products')['Actual_value'].sum()
     # Pie chart for portfolio distribution
     fig = plt.figure(figsize=(12, 6))
     plt.pie(Product_value, labels=Product_value.index, autopct='%1.1f%%', startangle=140)
-    plt.title('Portfolio Distribution By Product')
+    plt.title(f'Portfolio Distribution By Product - {current_date}')
     plt.axis('equal')  # Equal aspect ratio ensures the pie chart is circular.
 
     return fig
@@ -652,7 +659,7 @@ def plot_KPI(df):
 
     # 1. KPI: Actual_value vs Buying_value (today), in percentage
     # Calculate the absolute and percentage delta for today
-    current_date = df_copy['Date'].max()
+    current_date = df_copy['Date'].max().strftime('%d/%m/%Y')
     absolute_delta = df_copy['Value_diff'].sum()
     percentage_delta = (df_copy['Value_diff'].sum() / df_copy['Buying_value'].sum())*100
 
@@ -689,7 +696,7 @@ def plot_KPI(df):
     return fig
 
 
-def get_all_plots(cumulative_df, today_data,grouped_df):
+def get_all_plots(cumulative_df, today_data,grouped_df, start_date=None, end_date=None):
     """
     Generates and returns a dictionary of various plot objects for visualization.
 
@@ -724,7 +731,7 @@ def get_all_plots(cumulative_df, today_data,grouped_df):
     plots["ReadMe"] = create_ReadMe()
     plots["KPI Plot"] = plot_KPI(today_data)
     plots["Pivot Table"] = plot_pivot_table(today_data)
-    plots["Total by Date"] = plot_total_by_date(grouped_df)
+    plots["Total by Date"] = plot_total_by_date(grouped_df, start_date, end_date)
     plots["Total Pct by Date"] = plot_total_pct_by_date(grouped_df)
     plots["Portfolio Product Percentage"] = plot_portfolio_product_percentage_by_date(cumulative_df)
     plots["Pie Portfolio by ISIN"] = plot_pie_portfolio_by_ISIN(today_data)

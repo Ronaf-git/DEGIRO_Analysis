@@ -18,10 +18,69 @@ from matplotlib.backends.backend_pdf import PdfPages
 import tkinter as tk
 from tkinter import messagebox
 import platform
+import queue
+import time
+import threading
 
 def create_output_folder(date_folder) :
     os.makedirs(date_folder, exist_ok=True)
 
+# Create a class to handle the popup
+class NonClosablePopup:
+    def __init__(self, title, message, command_queue):
+        self.command_queue = command_queue
+        self.root = tk.Tk()
+        self.root.withdraw()  # Hide the root window
+        
+        # Create a Toplevel window which is a separate window
+        self.top = tk.Toplevel(self.root)
+        self.top.title(title)
+        
+        # Create a label to display the message
+        self.label = tk.Label(self.top, text=message)
+        self.label.pack(padx=20, pady=20)
+
+        # Maximize the window
+        # self.top.state('zoomed')  # This will maximize the window
+        
+        # Disable the close button ('X') on the top window
+        self.top.protocol("WM_DELETE_WINDOW", lambda: None)
+
+        # Start checking for commands in the queue
+        self._check_for_commands()
+
+    def _check_for_commands(self):
+        """This function checks for commands in the queue and updates the popup."""
+        try:
+            command = self.command_queue.get_nowait()  # Non-blocking check
+            if command == 'close':
+                self.close()
+            elif command.startswith('update:'):
+                new_message = command.split(":", 1)[1]
+                self.update_message(new_message)
+        except queue.Empty:
+            pass  # No command, continue running
+
+        # Recheck the queue after a small delay
+        self.top.after(100, self._check_for_commands)
+
+    def update_message(self, new_message):
+        """Updates the message displayed in the popup."""
+        self.label.config(text=new_message)
+        self.top.update_idletasks()  # Force an immediate update of the window
+        
+    def close(self):
+        """Closes the popup."""
+        self.top.destroy()
+        self.root.quit()
+
+    def show(self):
+        """Starts the Tkinter event loop."""
+        self.root.mainloop()
+
+def run_popup(command_queue):
+    popup = NonClosablePopup(f"{APP_NAME}", F"{APP_NAME} is starting...", command_queue)
+    popup.show()
 
 def show_popup(title, message):
     """

@@ -6,6 +6,7 @@
 # -- Update : 
 # --  
 # ----------------------------------------------------
+APP_NAME = 'DEGIRO Analysis'
 AUTHOR = 'Ronaf'
 VERSION = 0.1
 # Dictionary to map exchanges to Yahoo Finance suffix

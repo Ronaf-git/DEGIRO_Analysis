@@ -22,6 +22,10 @@ from Config.config import *
 import os
 from datetime import datetime
 import sys
+import queue
+import threading
+
+
 # ----- From Files
 from functions.callAllFunctions import *
 
@@ -53,14 +57,18 @@ pdf_filepath = os.path.join(date_folder, 'Degiro Analysis.pdf')
 # ==============================================================================================================================
 # Init 
 # ==============================================================================================================================
-# Create folders
-
-    
 
 
 # ===============================================================
 # Create Dataset
 # ===============================================================
+
+
+# Start the Tkinter popup in a separate thread
+command_queue = queue.Queue()
+popup_thread = threading.Thread(target=run_popup, args=(command_queue,))
+popup_thread.start()
+
 # Create Dataset 
 base_df = create_dataset(source_folder)
 
@@ -73,8 +81,12 @@ today = cumulative_df['Date'].max()
 # Filter for the latest data
 today_data = cumulative_df[cumulative_df['Date'] == today].copy()
 
-
 plots = get_all_plots(cumulative_df,today_data,grouped_df)
+
+# After the loop, close the popup
+command_queue.put('close')
+# Wait for the popup thread to finish
+popup_thread.join()
 
 createUI(plots,pdf_filepath,date_folder,cumulative_df)
 exit()

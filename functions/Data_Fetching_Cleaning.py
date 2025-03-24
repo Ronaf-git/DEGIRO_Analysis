@@ -21,8 +21,11 @@ import sqlite3  # Use SQLite or replace with SQLAlchemy for other databases
 import socket
 import os
 
+
+
 # Const
 from Config.config import *
+
   
 def show_popup(title,message) :
     """
@@ -418,6 +421,7 @@ def create_dataset(SourceFolder):
         df = create_dataset('path_to_your_csv_folder')
         print(df.head())
     """
+
     os.makedirs(SourceFolder, exist_ok=True)
 
     # Get all CSV files in the 'source' folder
@@ -483,6 +487,8 @@ def create_dataset(SourceFolder):
         tickers_data = yf.Ticker(yahoo_ticker).history(start=min_date, end=max_date).reset_index() 
         tickers_data['Date'] = pd.to_datetime(tickers_data['Date']).dt.tz_localize(None).dt.date
 
+
+
         # Create a dictionary with 'Date' as key and 'Close' as value (using Date as the index)
         tickers_data_dict = dict(zip(tickers_data['Date'], tickers_data['Close']))
         if not tickers_data_dict:
@@ -526,6 +532,8 @@ def create_dataset(SourceFolder):
     # Create a DataFrame with the date, product, cumulative quantity, and cumulative 'Montant négocié'
     cumulative_df = pd.DataFrame(cumulative_values, columns=['Date', 'Products','ISIN','Place','Exec Place', 'Qty', 'Buying_value','Actual_value'])
     
+
+
     return cumulative_df
 
 
