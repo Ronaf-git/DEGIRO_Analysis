@@ -8,7 +8,7 @@
 # ----------------------------------------------------
 APP_NAME = 'DEGIRO Analysis'
 AUTHOR = 'Ronaf'
-VERSION = 0.1
+VERSION = 0.2
 # Dictionary to map exchanges to Yahoo Finance suffix
 EXCHANGES_SUFFIXES = {
     "EAM": ".AS",      # Euronext Amsterdam (Netherlands)
