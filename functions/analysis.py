@@ -8,8 +8,13 @@ def calculation_df(df) :
     df_copy['Date'] = pd.to_datetime(df_copy['Date'], format='%d-%m-%y')
 
     #Adjusting values
-     # Handle case where Actual_value is 0 and Buying_value is not 0
-    df_copy.loc[df_copy['Actual_value'] == 0, 'Actual_value'] = df_copy['Buying_value']
+    # Handle case where Actual_value is 0 and Buying_value is not 0
+    df_copy.loc[
+        (df_copy['Actual_value'] == 0) &
+        (df_copy['Buying_value'] != 0) &
+        (df_copy['Qty'] != 0),
+        'Actual_value'
+    ] = df_copy['Buying_value']
 
     # Calculations
     # Calculate total Actual_value per day and %of product ; excluding total rows
@@ -29,6 +34,7 @@ def grouped_df_by_date(df) :
         'Actual_value': 'sum'
     }).reset_index()
     grouped['Variation_%'] = ((grouped['Actual_value'] - grouped['Buying_value']) / grouped['Buying_value']) * 100
+    grouped.loc[:, 'Value_diff'] = (grouped['Actual_value'] - grouped['Buying_value'])
     return grouped
 
 def create_today_df(df):

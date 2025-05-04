@@ -20,7 +20,7 @@ Start Install/Updates needed Python Packages
 ============================================''')
 
 # List of packages to install
-packages = ["pandas", "matplotlib", "seaborn"]
+packages = ["pandas", "matplotlib", "seaborn","yfinance"]
 
 # Installing each package
 for package in packages:

@@ -212,7 +212,41 @@ def plot_total_pct_by_date(df):
     # Return the figure object containing the plot
     return fig
 
-import matplotlib.pyplot as plt
+def plot_total_var_by_date(df):
+    # Create a copy of the dataframe to avoid modifying the original
+    df_copy = df.copy()
+
+    # Create the plot with a specific figure size
+    fig, ax = plt.subplots(figsize=(10,6))
+    
+    # Loop through the data to plot each segment of the variation with the appropriate color
+    for i in range(1, len(df_copy)):
+        if df_copy['Value_diff'].iloc[i] >= 0:
+            color = 'green'  # Positive or 0% variation
+        else:
+            color = 'red'  # Negative variation
+        
+        # Plot the segment between consecutive points (i-1 and i)
+        ax.plot(df_copy['Date'].iloc[i-1:i+1], 
+                df_copy['Value_diff'].iloc[i-1:i+1], 
+                color=color, linestyle='-', label='All' if i == len(df_copy) - 1 else "")
+
+    # Add labels for x and y axes and set the plot title
+    ax.set_xlabel('Date')
+    ax.set_ylabel('Variation')
+    ax.set_title('Variation between Buying and Actual Values by Date')
+
+    # Add grid lines, rotate x-axis labels for better readability, and format the y-axis as a percentage
+    ax.grid(True)
+    ax.tick_params(axis='x', rotation=45)  # Rotate x-axis labels
+    ax.yaxis.set_major_formatter(PercentFormatter(xmax=100))  # Format y-axis as percentage
+    plt.tight_layout()
+
+    # Add a horizontal line at 0% for visual reference
+    ax.axhline(y=0, color='black', linestyle='--', linewidth=1)
+
+    # Return the figure object containing the plot
+    return fig
 
 def plot_total_by_date(df, start_date=None, end_date=None):
     """
@@ -274,7 +308,6 @@ def plot_total_by_date(df, start_date=None, end_date=None):
     plt.tight_layout()
 
     return fig
-
 
 def plots_ISIN_by_date(df):
     """
@@ -621,6 +654,45 @@ def plot_pie_portfolio_by_ISIN(df):
 
     return fig
 
+def plot_pie_portfolio_by_asset_type(df):
+    """
+    Plots a pie chart showing the distribution of a portfolio by ISIN and its corresponding actual value.
+
+    Parameters:
+    df (pandas.DataFrame): A pandas DataFrame containing the portfolio data.
+                           The DataFrame should include at least two columns:
+                           - 'Products' (the ISIN or product identifier),
+                           - 'Actual_value' (the value associated with each product).
+
+    Returns:
+    matplotlib.figure.Figure: The pie chart figure displaying the portfolio distribution by ISIN.
+    
+    Process:
+    1. A copy of the input DataFrame is created to avoid modifying the original data.
+    2. The total value for each ISIN (or product) is calculated by summing the 'Actual_value' column grouped by the 'Products' column.
+    3. A pie chart is created to visualize the portfolio distribution, with each slice representing the proportion of each ISIN's total value.
+    4. The pie chart is displayed with percentages shown on the slices, and the chart is configured to have an equal aspect ratio to ensure the pie is circular.
+
+    Example:
+    >>> df = pd.DataFrame({
+    >>>     'asset_type': ['ISIN001', 'ISIN002', 'ISIN003', 'ISIN001', 'ISIN002'],
+    >>>     'Actual_value': [100, 200, 150, 300, 50]
+    >>> })
+    >>> plot_pie_portfolio_by_ISIN(df)
+    """
+    # Create a copy of the dataframe to avoid modifying the original
+    df_copy = df.copy()
+    current_date = df_copy['Date'].max().strftime('%d/%m/%Y')
+    # Calculate total value for each ISIN
+    Product_value = df_copy.groupby('Asset Type')['Actual_value'].sum()
+    # Pie chart for portfolio distribution
+    fig = plt.figure(figsize=(12, 6))
+    plt.pie(Product_value, labels=Product_value.index, autopct='%1.1f%%', startangle=140)
+    plt.title(f'Portfolio Distribution By Asset Type - {current_date}')
+    plt.axis('equal')  # Equal aspect ratio ensures the pie chart is circular.
+
+    return fig
+
 def plot_KPI(df):
     """
     Generate a KPI dashboard for today's data, including various visualizations. 
@@ -695,7 +767,6 @@ def plot_KPI(df):
 
     return fig
 
-
 def get_all_plots(cumulative_df, today_data,grouped_df, start_date=None, end_date=None):
     """
     Generates and returns a dictionary of various plot objects for visualization.
@@ -735,8 +806,10 @@ def get_all_plots(cumulative_df, today_data,grouped_df, start_date=None, end_dat
     plots["Total Pct by Date"] = plot_total_pct_by_date(grouped_df)
     plots["Portfolio Product Percentage"] = plot_portfolio_product_percentage_by_date(cumulative_df)
     plots["Pie Portfolio by ISIN"] = plot_pie_portfolio_by_ISIN(today_data)
+    plots["Pie Portfolio by Asset Type"] = plot_pie_portfolio_by_asset_type(today_data)
     plots["Appendixes"] = create_page_section('Appendixes')
-    
+    plots["Total Var by Date"] = plot_total_var_by_date(grouped_df)
+
     # Extend with additional plots from the functions that return lists
     plots["ISIN Percentage by Date"] = plots_ISIN_pct_by_date(cumulative_df)
     plots["ISIN by Date"] = plots_ISIN_by_date(cumulative_df)

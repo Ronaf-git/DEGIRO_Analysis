@@ -20,11 +20,29 @@ import sys
 import sqlite3  # Use SQLite or replace with SQLAlchemy for other databases
 import socket
 import os
-
-
+import chardet
+import json
 
 # Const
 from Config.config import *
+
+
+
+def detect_file_encoding(file_path, sample_size=10000):
+    """
+    Detect the text encoding of a file using chardet.
+
+    Parameters:
+        file_path (str): Path to the file to check.
+        sample_size (int): Number of bytes to read for detection (default: 10,000).
+
+    Returns:
+        str: Detected encoding (e.g., 'utf-8', 'ISO-8859-1').
+    """
+    with open(file_path, 'rb') as f:
+        raw_data = f.read(sample_size)
+        result = chardet.detect(raw_data)
+        return result['encoding']
 
   
 def show_popup(title,message) :
@@ -79,9 +97,11 @@ def get_yahoo_ticker(ticker, exchange) -> None:
     
     # Get the suffix for the exchange
     suffix = EXCHANGES_SUFFIXES.get(exchange, "")
-    
     if suffix:
-        yahoo_ticker = ticker + suffix
+        if suffix == 'EMPTY' :
+            yahoo_ticker = ticker
+        else :
+            yahoo_ticker = ticker + suffix
         return yahoo_ticker
     else:
         return None  # No mapping found for that exchange
@@ -124,7 +144,7 @@ def detect_delimiter(file_path):
         ','  # Returns the delimiter used in the CSV file (e.g., comma, tab, etc.)
     """
     with open(file_path, 'r', newline='') as file:
-        sample = file.read(10000)  # Read a sample of the file
+        sample = file.read(100000)  # Read a sample of the file
         dialect = csv.Sniffer().sniff(sample)  # Sniff the dialect
         return dialect.delimiter
 
@@ -185,6 +205,37 @@ def get_ticker_from_isin(isin, api_key=None):
     - isin (str): The ISIN of the security.
     - api_key (str): The OpenFIGI API key.
 
+    Example of JSON response
+    [
+        {
+            "data": [
+                {
+                    "figi": "BBG01L3DLZ45",
+                    "name": "ORPEA SA- RTS",
+                    "ticker": "ORPD1EUR",
+                    "exchCode": "EP",
+                    "compositeFIGI": "BBG01L3DLZ36",
+                    "securityType": "Right",
+                    "marketSector": "Equity",
+                    "shareClassFIGI": "BBG01L34ZZ40",
+                    "securityType2": "Right",
+                    "securityDescription": "ORPD1EUR"
+                },
+                {
+                    "figi": "BBG01L3DLZ63",
+                    "name": "ORPEA SA- RTS",
+                    "ticker": "ORPD1EUR",
+                    "exchCode": "EZ",
+                    "compositeFIGI": "BBG01L3DLZ54",
+                    "securityType": "Right",
+                    "marketSector": "Equity",
+                    "shareClassFIGI": "BBG01L34ZZ40",
+                    "securityType2": "Right",
+                    "securityDescription": "ORPD1EUR"
+                }
+            ]
+        }
+    ]
     Returns:
     - str: The corresponding ticker symbol, or an error message if not found.
     """
@@ -207,7 +258,8 @@ def get_ticker_from_isin(isin, api_key=None):
     # Check if the response was successful
     if response.status_code == 200:
         data = response.json()
-        if data:
+        # print(json.dumps(data, indent=4))
+        if data and 'warning' not in data[0] and 'error' not in data[0]:
             # Extract the ticker symbols from the response (if available)
             tickers = [item.get("data", [{}])[0].get("ticker", None) for item in data if item.get("data")] [0]
             
@@ -220,6 +272,63 @@ def get_ticker_from_isin(isin, api_key=None):
             return "No mapping found."
     else:
         return f"Error: {response.status_code} - {response.text}"
+
+# Function to calculate FIFO unit cost, fees included
+def get_fifo_unit_cost(row):
+    global purchase_history
+
+    dt = row['DateTime']
+    isin = row.iloc[3]        # Code ISIN
+    quantity = row.iloc[6]    # Quantité
+    price = row.iloc[7]       # Cours
+    fees = row.iloc[14]          # fees
+    
+    # Check if fees is NaN and set to 0 if so
+    if pd.isna(fees):  # or math.isnan(fees) if you're working with floats directly
+        fees = 0
+    full_price = price + (-fees) # with fees
+
+    if isin not in purchase_history:
+        purchase_history[isin] = []
+
+    if quantity > 0:
+        # This is a BUY → store in FIFO queue
+        purchase_history[isin].append([quantity, full_price])
+        print(f'achat le {dt}, qté {quantity}, prix {price}')
+        return 0.0  # No cost for buys
+    else:
+        print (f'sell found {isin}')
+        # This is a SELL → calculate FIFO cost
+        sell_qty = -quantity
+        total_cost = 0.0
+        total_units = 0
+
+        # Loop to consume units from the FIFO purchase history until all units are sold
+        while sell_qty > 0 and purchase_history[isin]:
+            # Access the first purchase batch (FIFO principle)
+            batch_qty, batch_price = purchase_history[isin][0]
+            print(f"Batch Quantity: {batch_qty}, Batch Price: {batch_price}")  # Debugging line
+            # If the entire batch can be used for the sale
+            if batch_qty <= sell_qty:
+                total_cost += batch_qty * batch_price  # Add batch cost to total cost
+                total_units += batch_qty  # Add batch quantity to total units sold
+                sell_qty -= batch_qty  # Decrease the remaining quantity to sell
+                purchase_history[isin].pop(0)  # Remove this batch from purchase history (since it's fully used)
+            else:
+                # If only part of the batch is needed for the sale
+                total_cost += sell_qty * batch_price  # Add the partial batch cost
+                total_units += sell_qty  # Add the sold units to total
+                purchase_history[isin][0][0] = batch_qty - sell_qty  # Update the batch with remaining quantity
+                sell_qty = 0  # All units to be sold have been processed
+
+        # Return the cost per unit of the sold items, if any were sold
+        # If no units were sold (i.e., total_units == 0), return 0.0
+        print(f"Total Cost: {total_cost}, Total Units: {total_units}")
+        output = total_cost / total_units if total_units else 0.0
+        print (f'fifo value {output}')
+        return output
+
+
 
 def export_sqlite_to_csv(db_name, table_name, output_csv):
     """
@@ -256,7 +365,7 @@ def export_sqlite_to_csv(db_name, table_name, output_csv):
     cursor.close()
     conn.close()
 
-    show_popup('DB (CSV) Saved', f'DB saved as CSV to {output_csv}')
+    #show_popup('DB (CSV) Saved', f'DB saved as CSV to {output_csv}')
 
 def create_table_if_not_exists(tickers_data_df, db_name):
     """
@@ -439,17 +548,33 @@ def create_dataset(SourceFolder):
     dfs = []
     for file in csv_files:
         delim = detect_delimiter(file)
-        df = pd.read_csv(file, delimiter=delim)  # Use detected delimiter
+        encoding = detect_file_encoding(file)
+        df = pd.read_csv(file, delimiter=delim, encoding=encoding )  # Use detected delimiter
         # Check if Df is based on Degiro standards
         if not IsDEGIROexport(df) :
             show_popup("Export Not Ok", f"File {file} is not a supported DEGIRO export format. Please format it proprely. End of process.")
             sys.exit() 
-        dfs.append(df)
+            # Align columns with the first dataframe (dfs[0])
+        if len(dfs) == 0:
+            dfs.append(df)  # Add the first dataframe
+        else:
+            df.columns = dfs[0].columns  # Set columns of the current dataframe to match the first dataframe
+            dfs.append(df)
     # Concatenate all DataFrames
-    df = pd.concat(dfs, ignore_index=True)
-
+    df = pd.concat(dfs, ignore_index=True, axis=0, join='outer')
+    
     # Convert 'Date' column to datetime format ; Index: 0, Column Title: Date
+    df.iloc[:, 1] = pd.to_timedelta(df.iloc[:, 1] + ':00') #if it only has HH:MM
+    # Add the time to the datetime
     df.iloc[:, 0] = pd.to_datetime(df.iloc[:, 0], format='%d-%m-%Y')
+    df['DateTime'] = df.iloc[:, 0] + df.iloc[:, 1]
+    
+    # convert price to num
+    '''df.iloc[:, 7] = df.iloc[:, 7].replace({',': '.'}, regex=True)
+    df.iloc[:, 7] = pd.to_numeric(df.iloc[:, 7], errors='coerce')'''
+
+   
+
     # Get today's date
     today = pd.to_datetime('today')
     # Create a date range from the first date in the data to today
@@ -458,6 +583,17 @@ def create_dataset(SourceFolder):
     min_date = date_range.min()  # The minimum date
     max_date = date_range.max()  # The maximum date
 
+    # Global variable to keep track of FIFO purchase history per product (ISIN)
+    global purchase_history
+    purchase_history = {}
+    # FIFO COST
+    df = df.sort_values(by='DateTime', ascending=True)  # Sort by date to process chronologically  
+    # Now, apply the get_fifo_cost function to the DataFrame
+    df['FIFO Unit Cost'] = df.apply(get_fifo_unit_cost, axis=1) 
+
+    
+
+    print(df)
     # Initialize a list to hold cumulative values for each product and each column
     cumulative_values = []
 
@@ -470,11 +606,10 @@ def create_dataset(SourceFolder):
     Index: 6, Column Title: Quantité
     Index: 16, Column Title: Montant négocié
     '''
-
-    for ISIN in df.iloc[:, 3].unique():
+    for ISIN in df.iloc[:, 3].dropna().unique():
+        print(ISIN)
         # Filter data for the current product
         product_df = df[df.iloc[:, 3] == ISIN]
-
         # Initialize variables to store the running totals 
         running_quantity = 0
         running_montant = 0
@@ -482,24 +617,40 @@ def create_dataset(SourceFolder):
 
         # Find My tickers values
         ticker = get_ticker_from_isin(ISIN)
-        exchange = df[df.iloc[:, 3] == ISIN].iloc[:, 4].unique()[0]
+        exchange = df[df.iloc[:, 3] == ISIN].iloc[:, 4].dropna().unique()[0]
         yahoo_ticker = get_yahoo_ticker(ticker, exchange)
-        tickers_data = yf.Ticker(yahoo_ticker).history(start=min_date, end=max_date).reset_index() 
+        if yahoo_ticker:
+            tickers_data = yf.Ticker(yahoo_ticker).history(start=min_date, end=max_date).reset_index()
+        else:
+            print(f"Invalid or missing ticker: {yahoo_ticker}")
+            tickers_data = pd.DataFrame()  # or handle appropriately
         tickers_data['Date'] = pd.to_datetime(tickers_data['Date']).dt.tz_localize(None).dt.date
 
+
+        try:
+            ticker_obj = yf.Ticker(yahoo_ticker)
+            info = ticker_obj.info
+            asset_type = info.get('quoteType', 'Unknown').capitalize()
+            sector = info.get('sector', 'Unknown')
+            location = info.get('country', 'Unknown')
+        except Exception as e:
+            asset_type = 'Unknown'
+            sector = 'Unknown'
+            location = 'Unknown'
 
 
         # Create a dictionary with 'Date' as key and 'Close' as value (using Date as the index)
         tickers_data_dict = dict(zip(tickers_data['Date'], tickers_data['Close']))
         if not tickers_data_dict:
             continue
-
         # Iterate through the date range and calculate cumulative quantities and amounts for the current product
         for single_date in date_range:
-            
+            # TEST FIFO
+            fifo_cost = product_df[product_df.iloc[:, 0] == single_date]['FIFO Unit Cost'].sum()  
+
             # Get the quantities and montant for the current date and product
             daily_quantity = product_df[product_df.iloc[:, 0] == single_date].iloc[:, 6].sum()
-            daily_montant =- product_df[product_df.iloc[:, 0] == single_date].iloc[:, 16].sum()
+            daily_montant =- product_df[product_df.iloc[:, 0] == single_date].iloc[:, 16].sum() 
         # Lookup the stock price for the given date, handle missing dates
             single_date = pd.to_datetime(single_date).tz_localize(None).date()
             if single_date in tickers_data_dict:
@@ -518,7 +669,15 @@ def create_dataset(SourceFolder):
                     daily_value = 0
             # Update running totals
             running_quantity += daily_quantity
-            running_montant += daily_montant
+            if running_quantity == 0 :
+                running_montant += 0
+            elif  fifo_cost != 0 :
+                # If sold, i got a fifo_cost. I must deduct my invested amount with this and not with the actual selling value
+                # this way, if i sell all, i'll deduct exactly the invested amount
+                running_montant += -fifo_cost * daily_quantity
+                
+            else :
+                running_montant += daily_montant
             running_value = (daily_value * running_quantity)
 
             # Add Metadata
@@ -527,13 +686,20 @@ def create_dataset(SourceFolder):
             exec_place = df[df.iloc[:, 3] == ISIN].iloc[:, 5].iloc[0]  # Get the first value for 'Lieu d'exécution'
             
             # Append the result for the current date, product, and cumulative values
-            cumulative_values.append([single_date, product,ISIN,place,exec_place, running_quantity, running_montant,running_value])
+            cumulative_values.append([
+                single_date, product, ISIN, place, exec_place,
+                running_quantity, running_montant, running_value,
+                asset_type, sector, location , fifo_cost
+            ])
 
     # Create a DataFrame with the date, product, cumulative quantity, and cumulative 'Montant négocié'
-    cumulative_df = pd.DataFrame(cumulative_values, columns=['Date', 'Products','ISIN','Place','Exec Place', 'Qty', 'Buying_value','Actual_value'])
+    cumulative_df = pd.DataFrame(cumulative_values, columns=[
+    'Date', 'Products', 'ISIN', 'Place', 'Exec Place',
+    'Qty', 'Buying_value', 'Actual_value',
+    'Asset Type', 'Sector', 'Geographical Location' ,'test fifo'
+                ])
+
     
-
-
     return cumulative_df
 
 
@@ -582,4 +748,4 @@ def store_tickers_data_sqlite3_DB(df, output_folder):
     conn.close()
 
     # Show a popup message indicating the data has been saved
-    show_popup('DB Saved', f'DB saved to {output_folder}')
+    #show_popup('DB Saved', f'DB saved to {output_folder}')

@@ -21,6 +21,10 @@ import platform
 import queue
 import time
 import threading
+import re
+def sanitize_filename(filename):
+    # Remove any characters that are not allowed in filenames (such as slashes, colons, etc.)
+    return re.sub(r'[\\/*?:"<>|]', "_", filename)
 
 def create_output_folder(date_folder) :
     os.makedirs(date_folder, exist_ok=True)
@@ -100,7 +104,8 @@ def show_popup(title, message):
     root = tk.Tk()
     root.withdraw()  # Hide the root window
     # Show the popup message box
-    messagebox.showinfo(title, message)
+    root.after(0, lambda: messagebox.showinfo(title, message))  # Schedule the popup on the main thread
+
     # Close the tkinter instance after the popup
     root.quit()
 
@@ -181,6 +186,7 @@ def plots_saveAs_OnePDF(pdf_filepath, plots_dict):
                 plt.close(plot)    # Close the plot after saving
     show_popup('Report exported to pdf', f'Report exported to {pdf_filepath}')
 
+
 def plots_saveAs_PNG(outputFolderPath, plots_dict):
     """
     Save multiple plots as PNG files in a specified folder.
@@ -222,12 +228,15 @@ def plots_saveAs_PNG(outputFolderPath, plots_dict):
             for idx, p in enumerate(plot):
                 # Get the plot's title (handling cases where the title might be missing or empty)
                 plot_title = p.gca().get_title() if p.gca().get_title() else f"{title}_plot_{idx+1}"
-                p.savefig(os.path.join(outputFolderPath, f'{plot_title}.png'))
+                sanitized_title = sanitize_filename(plot_title)  # Sanitize the title
+                p.savefig(os.path.join(outputFolderPath, f'{sanitized_title}.png'))
                 plt.close(p)  # Close the plot after saving
         else:
             # Get the plot's title (handling cases where the title might be missing or empty)
             plot_title = plot.gca().get_title() if plot.gca().get_title() else f"{title}"
-            plot.savefig(os.path.join(outputFolderPath, f'{plot_title}.png'))
+            sanitized_title = sanitize_filename(plot_title)  # Sanitize the title
+            plot.savefig(os.path.join(outputFolderPath, f'{sanitized_title}.png'))
             plt.close(plot)  # Close the plot after saving
-    show_popup('Plots exported as PNG', f'Img exported to {outputFolderPath}')
+
+    show_popup('Plots exported as PNG', f'Imgs exported to {outputFolderPath}')
 

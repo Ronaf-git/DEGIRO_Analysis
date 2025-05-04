@@ -264,14 +264,22 @@ class MainWindow(QMainWindow):
             {"title": "KPI", "fig": plots["KPI Plot"], "grid_size": (1, 1), "show_toolbar": False},
             {"title": "Pivot Table", "fig": plots["Pivot Table"], "grid_size": (1, 1), "show_toolbar": False},
             # Tab with 4 subplots (2x2 grid)
-            {"title": "Overview", 
+            {"title": "Portfolio Overview", 
             "plots_data": [
-                (plots["Total Pct by Date"], (1, 1),True),  # Use plot from the 'plots' dictionary
-                (plots["Total by Date"], (1, 2),True),     # Similarly use 'Sine Wave'
+                #(plots["Total Var by Date"], (1, 1),True),  # Use plot from the 'plots' dictionary
+                (plots["Pie Portfolio by Asset Type"], (1, 2),True),     # Similarly use 'Sine Wave'
                 (plots["Portfolio Product Percentage"], (2, 1),True), # Use 'Cosine Wave'
                 (plots["Pie Portfolio by ISIN"], (2, 2),True)  # Use 'Exponential Curve'
             ], "grid_size": (2, 2)},
-                        # Tab with 4 subplots (2x2 grid)
+            # Tab with 4 subplots (2x2 grid)
+            {"title": "Portfolio Overview by date", 
+            "plots_data": [
+                (plots["Total Pct by Date"], (1, 1),True),  # Use plot from the 'plots' dictionary
+                (plots["Total by Date"], (1, 2),True),     # Similarly use 'Sine Wave'
+                (plots["Total Var by Date"], (2, 1),True), # Use 'Cosine Wave'
+                #(plots["Pie Portfolio by ISIN"], (2, 2),True)  # Use 'Exponential Curve'
+            ], "grid_size": (2, 2)},
+            # other
             {"title": "Appendixes", 
             "plots_data": [
                 (plots["ISIN Percentage by Date"], (1, 1),True),  # Use plot from the 'plots' dictionary

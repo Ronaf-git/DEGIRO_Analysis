@@ -58,12 +58,6 @@ pdf_filepath = os.path.join(date_folder, 'Degiro Analysis.pdf')
 # Init 
 # ==============================================================================================================================
 
-
-# ===============================================================
-# Create Dataset
-# ===============================================================
-
-
 # Start the Tkinter popup in a separate thread
 command_queue = queue.Queue()
 popup_thread = threading.Thread(target=run_popup, args=(command_queue,))

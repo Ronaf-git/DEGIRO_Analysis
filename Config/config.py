@@ -11,11 +11,15 @@ AUTHOR = 'Ronaf'
 VERSION = 0.2
 # Dictionary to map exchanges to Yahoo Finance suffix
 EXCHANGES_SUFFIXES = {
-    "EAM": ".AS",      # Euronext Amsterdam (Netherlands)
+    "EAM": ".AS",
+    "NDQ" :"EMPTY",
+    "FX" : "EMPTY",
+    "TOR" : "EMPTY",
+    "XET" : ".SG",     
     "XETR": ".DE",    # Frankfurt Stock Exchange (Germany)
     "NYS": ".N",      # New York Stock Exchange (NYSE)
     "TSE": ".T",      # Tokyo Stock Exchange (Japan)
-    "TDG": ".DE", # Incorrect but Tradegate isn't found on yfin      
+    "TDG": ".DE",      # Incorrect but Tradegate isn't found on yfin      
     "EPA": ".PA",     # Euronext Paris (France)
     "BVMF": ".SA",    # B3 - São Paulo Stock Exchange (Brazil)
     "SSE": ".SS",     # Shanghai Stock Exchange (China)
