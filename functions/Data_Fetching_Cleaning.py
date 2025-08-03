@@ -674,7 +674,8 @@ def create_dataset(SourceFolder):
             elif  fifo_cost != 0 :
                 # If sold, i got a fifo_cost. I must deduct my invested amount with this and not with the actual selling value
                 # this way, if i sell all, i'll deduct exactly the invested amount
-                running_montant += -fifo_cost * daily_quantity
+                # daily_quantity is neg due to sell, no need to * -1
+                running_montant += fifo_cost * daily_quantity 
                 
             else :
                 running_montant += daily_montant
