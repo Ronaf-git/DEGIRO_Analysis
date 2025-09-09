@@ -1,0 +1,9 @@
+pandas
+matplotlib
+numpy
+seaborn
+yfinance
+openfigi
+PyQt5
+requests
+chardet
